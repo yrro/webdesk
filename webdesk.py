@@ -36,7 +36,7 @@ def get_password():
 
 import requests
 from requests_ntlm import HttpNtlmAuth
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlencode
 
 with requests.Session() as ses:
     password = get_password()
@@ -52,4 +52,4 @@ with requests.Session() as ses:
         #logging.debug(row)
         import json
         params = json.loads(row['params'])
-        print(urljoin(attributes['url'], 'wd/object/open.rails?class_name={launch_class_name}&key={launch_key}'.format(**params)))
+        print(urljoin(attributes['url'], 'wd/object/open.rails?' + urlencode([('class_name', params['launch_class_name']), ('key', params['launch_key'])])))
