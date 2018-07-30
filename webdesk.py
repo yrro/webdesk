@@ -58,26 +58,31 @@ from urllib.parse import urljoin, urlencode
 import requests
 from requests_ntlm import HttpNtlmAuth
 
-with requests.Session() as ses:
-    password = get_password()
-    ses.auth = HttpNtlmAuth(attributes['user'], password)
+def get_tickets():
+    with requests.Session() as ses:
+        password = get_password()
+        ses.auth = HttpNtlmAuth(attributes['user'], password)
 
-    tickets = []
-    for p in ticket_list_parse(ticket_list_get(ses)):
-        tickets.append({
-            'url': urljoin(attributes['url'], 'wd/object/open.rails?' + urlencode([('class_name', p['launch_class_name']), ('key', p['launch_key'])])),
-            'list_params': p,
-        })
+        tickets = []
+        for p in ticket_list_parse(ticket_list_get(ses)):
+            tickets.append({
+                'url': urljoin(attributes['url'], 'wd/object/open.rails?' + urlencode([('class_name', p['launch_class_name']), ('key', p['launch_key'])])),
+                'list_params': p,
+            })
 
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    with ThreadPoolExecutor(8) as ex:
-        # map futures to ticket dicts
-        f_to_ticket = {ex.submit(ses.get, t['url']): t for t in tickets}
-        for rf in as_completed(f_to_ticket):
-            rf.result().raise_for_status()
-            t = f_to_ticket[rf]
-            t.update(ticket_details_parse(rf.result().text))
-            logging.debug(t)
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        with ThreadPoolExecutor(8) as ex:
+            # map futures to ticket dicts
+            f_to_ticket = {ex.submit(ses.get, t['url']): t for t in tickets}
+            for rf in as_completed(f_to_ticket):
+                rf.result().raise_for_status()
+                t = f_to_ticket[rf]
+                t.update(ticket_details_parse(rf.result().text))
+
+        return tickets
+
+for t in get_tickets():
+    logging.debug(t)
 
 # customer
 # department
