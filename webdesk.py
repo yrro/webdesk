@@ -34,6 +34,21 @@ def get_password():
     Secret.password_store_sync(SCHEMA, attributes, Secret.COLLECTION_DEFAULT, 'WebDesk for \'{user}\' @ <{url}?'.format(**attributes), password, None)
     return password
 
+def each_ticket(ses):
+    r = ses.get(urljoin(attributes['url'], 'wd/query/list.rails?class_name=IncidentManagement.Incident&query=_MyGroupIncidentWorkload&page_size=10000'))
+    #import ipdb; ipdb.set_trace()
+    r.raise_for_status()
+
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(r.text, 'html.parser')
+    for row in soup.find(id='listBody').find_all('tr', 'listBodyRow'):
+        import json
+        params = json.loads(row['params'])
+        yield {
+            'key': params['launch_key'],
+            'url': urljoin(attributes['url'], 'wd/object/open.rails?' + urlencode([('class_name', params['launch_class_name']), ('key', params['launch_key'])])),
+        }
+
 import requests
 from requests_ntlm import HttpNtlmAuth
 from urllib.parse import urljoin, urlencode
@@ -42,14 +57,30 @@ with requests.Session() as ses:
     password = get_password()
 
     ses.auth = HttpNtlmAuth(attributes['user'], get_password())
-    r = ses.get(urljoin(attributes['url'], 'wd/query/list.rails?class_name=IncidentManagement.Incident&query=_MyGroupIncidentWorkload&page_size=10000'))
-    #import ipdb; ipdb.set_trace()
-    r.raise_for_status()
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    with ThreadPoolExecutor(8) as ex:
+        # map futures to ticket dicts
+        f_to_ticket = {ex.submit(ses.get, t['url']): t for t in each_ticket(ses)}
 
-    from bs4 import BeautifulSoup
-    soup = BeautifulSoup(r.text, 'html.parser')
-    for row in soup.find(id='listBody').find_all('tr', 'listBodyRow'):
-        #logging.debug(row)
-        import json
-        params = json.loads(row['params'])
-        print(urljoin(attributes['url'], 'wd/object/open.rails?' + urlencode([('class_name', params['launch_class_name']), ('key', params['launch_key'])])))
+        for rf in as_completed(f_to_ticket):
+            try:
+                t = f_to_ticket[rf]
+                t['body'] = rf.result()
+            except Exception:
+                logging.exception('error fetching')
+            else:
+                logging.debug(t)
+
+# customer
+# department
+# phone
+# internal number
+# category
+# details
+# summary
+# impact
+# urgency
+# analyst
+# created by
+# created
+# reference no.
