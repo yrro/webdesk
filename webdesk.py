@@ -35,7 +35,7 @@ def get_password():
     return password
 
 def ticket_list_get(ses):
-    r = ses.get(urljoin(attributes['url'], 'wd/query/list.rails?class_name=IncidentManagement.Incident&query=_MyGroupIncidentWorkload&page_size=1000'))
+    r = ses.get(urljoin(attributes['url'], 'wd/query/list.rails?class_name=IncidentManagement.Incident&query=_MyGroupIncidentWorkload&page_size=10000'))
     r.raise_for_status()
     return r.text
 
@@ -81,8 +81,33 @@ def get_tickets():
 
         return tickets
 
-for t in get_tickets():
-    logging.debug(t)
+UDA = {
+    'webdesk_key': {'label': 'WebDesk key', 'type': 'string'},
+    'webdesk_url': {'label': 'WebDesk URL', 'type': 'string'},
+    'webdesk_customer': {'label': 'WebDesk customer', 'type': 'string'},
+    'webdesk_department': {'label': 'WebDesk department', 'type': 'string'},
+    'webdesk_category': {'label': 'WebDesk category', 'type': 'string'},
+    'webdesk_summary': {'label': 'WebDesk category', 'type': 'string'},
+    'webdesk_impact': {'label': 'WebDesk impact', 'type': 'string'},
+    'webdesk_analyst': {'label': 'WebDesk analyst', 'type': 'string'},
+    'webdesk_customer': {'label': 'WebDesk customer', 'type': 'string'},
+    'webdesk_number': {'label': 'WebDesk ticket number', 'type': 'numeric'},
+}
+
+from taskw import TaskWarrior
+tw = TaskWarrior(config_overrides={'uda': UDA}, marshal=True)
+logging.debug(tw.filter_tasks({'webdesk_key.has': '-'}))
+
+for ticket in get_tickets():
+    logging.debug(ticket)
+    id_, task = tw.get_task(webdesk_key=ticket['list_params']['key'])
+    logging.debug(task)
+    if id_ is None:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(ticket['detail_params']['Description49'], 'html.parser')
+        logging.debug(soup.get_text())
+
+        tw.task_add('test', webdesk_key=ticket['list_params']['key'])
 
 # customer
 # department
@@ -90,8 +115,8 @@ for t in get_tickets():
 # details
 # summary
 # impact
-# urgency
+# urgency -> due
 # analyst
-# created by
+# customer
 # created
-# reference no.
+# ticket no.
