@@ -34,42 +34,45 @@ def get_password():
     Secret.password_store_sync(SCHEMA, attributes, Secret.COLLECTION_DEFAULT, 'WebDesk for \'{user}\' @ <{url}?'.format(**attributes), password, None)
     return password
 
-def each_ticket(ses):
-    r = ses.get(urljoin(attributes['url'], 'wd/query/list.rails?class_name=IncidentManagement.Incident&query=_MyGroupIncidentWorkload&page_size=10000'))
-    #import ipdb; ipdb.set_trace()
+def ticket_list_get(ses):
+    from urllib.parse import urljoin, urlencode
+    r = ses.get(urljoin(attributes['url'], 'wd/query/list.rails?class_name=IncidentManagement.Incident&query=_MyGroupIncidentWorkload&page_size=1000'))
     r.raise_for_status()
+    return r.text
 
+def ticket_list_parse(tickets):
+    from urllib.parse import urljoin, urlencode
     from bs4 import BeautifulSoup
-    soup = BeautifulSoup(r.text, 'html.parser')
+    soup = BeautifulSoup(tickets, 'html.parser')
     for row in soup.find(id='listBody').find_all('tr', 'listBodyRow'):
         import json
         params = json.loads(row['params'])
-        yield {
-            'key': params['launch_key'],
-            'url': urljoin(attributes['url'], 'wd/object/open.rails?' + urlencode([('class_name', params['launch_class_name']), ('key', params['launch_key'])])),
-        }
+        yield urljoin(attributes['url'], 'wd/object/open.rails?' + urlencode([('class_name', params['launch_class_name']), ('key', params['launch_key'])]))
+
+def ticket_details_parse(body):
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(body, 'html.parser')
+    import json
+    params = json.loads(soup.find(id='original_values')['value'])
+    return params
 
 import requests
 from requests_ntlm import HttpNtlmAuth
-from urllib.parse import urljoin, urlencode
 
 with requests.Session() as ses:
     password = get_password()
+    ses.auth = HttpNtlmAuth(attributes['user'], password)
 
-    ses.auth = HttpNtlmAuth(attributes['user'], get_password())
+    ticket_urls = ticket_list_parse(ticket_list_get(ses))
+
     from concurrent.futures import ThreadPoolExecutor, as_completed
     with ThreadPoolExecutor(8) as ex:
         # map futures to ticket dicts
-        f_to_ticket = {ex.submit(ses.get, t['url']): t for t in each_ticket(ses)}
-
+        f_to_ticket = {ex.submit(ses.get, u): u for u in ticket_urls}
         for rf in as_completed(f_to_ticket):
-            try:
-                t = f_to_ticket[rf]
-                t['body'] = rf.result()
-            except Exception:
-                logging.exception('error fetching')
-            else:
-                logging.debug(t)
+            u = f_to_ticket[rf]
+            rf.result().raise_for_status()
+            logging.debug(ticket_details_parse(rf.result().text))
 
 # customer
 # department
