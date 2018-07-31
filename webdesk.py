@@ -5,34 +5,13 @@ logging.getLogger().setLevel(logging.DEBUG)
 logging.getLogger('requests.packages.urllib3').setLevel(logging.DEBUG)
 logging.getLogger('requests.packages.urllib3').propagate = True
 
-import gi
-
-gi.require_version('Secret', '1')
-
-from gi.repository import Secret
-
-SCHEMA = Secret.Schema.new(
-    'uk.org.robots.WebDesk',
-    Secret.SchemaFlags.NONE,
-    {
-        'user': Secret.SchemaAttributeType.STRING,
-        'url': Secret.SchemaAttributeType.STRING,
-    }
-)
-
 import sys
 attributes = {'user': sys.argv[1], 'url': sys.argv[2]}
 
+import secret
+
 if attributes['url'][-1] != '/':
     attributes['url'] += '/'
-
-def get_password():
-    password = Secret.password_lookup_sync(SCHEMA, attributes, None)
-    if password is None:
-        from getpass import getpass
-        password = getpass('Password for \'{user}\' @ <{url}>:'.format(**attributes))
-    Secret.password_store_sync(SCHEMA, attributes, Secret.COLLECTION_DEFAULT, 'WebDesk for \'{user}\' @ <{url}?'.format(**attributes), password, None)
-    return password
 
 def ticket_list_get(ses):
     r = ses.get(urljoin(attributes['url'], 'wd/query/list.rails?class_name=IncidentManagement.Incident&query=_MyGroupIncidentWorkload&page_size=10000'))
@@ -60,7 +39,7 @@ from requests_ntlm import HttpNtlmAuth
 
 def get_tickets():
     with requests.Session() as ses:
-        password = get_password()
+        password = secret.get_password(attributes)
         ses.auth = HttpNtlmAuth(attributes['user'], password)
 
         tickets = []
