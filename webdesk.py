@@ -72,11 +72,15 @@ def ticket_task_build(ticket):
     response = ticket['detail'].find(id='mainForm-ResponseLevel55Display')['value']
     m = re.search('(\S+)\s+(Hours|Days)', response)
     if m[2] == 'Hours':
-        due_delta = datetime.timedelta(hours=int(m[1]))
+        t['webdesk_due'] = t['webdesk_created'] + datetime.timedelta(hour=int(m[1]))
     elif m[2] == 'Days':
-        # TODO working days
-        due_delta = datetime.timedelta(days=int(m[1]))
-    t['webdesk_due'] = t['webdesk_created'] + due_delta
+        due = t['webdesk_created']
+        d = int(m[1])
+        while d > 0:
+            due += datetime.timedelta(days=1)
+            if due.weekday() < 5:
+                d -= 1
+        t['webdesk_due'] = due
 
     return t
 
