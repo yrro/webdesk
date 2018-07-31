@@ -17,6 +17,11 @@ def main(argv):
     tickets = webdesk.get_tickets(attributes)
     tasks_ = tasks.get_tasks()
 
+    new_tasks = tickets.keys() - tasks_.keys()
+    existing_tasks = tickets.keys() & tasks_.keys()
+    missing_tasks = tasks_.keys() - tickets.keys()
+    logging.info('%d new, %d existing and %d missing tasks', len(new_tasks), len(existing_tasks), len(missing_tasks))
+
     import ipdb; ipdb.set_trace()
 
     #new_tickets = tickets.keys() - tasks_.keys()
