@@ -1,17 +1,25 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import datetime
 import json
 import logging
 import re
 from urllib.parse import urljoin, urlencode
 
 from bs4 import BeautifulSoup
+import pytz
 import requests
 from requests_ntlm import HttpNtlmAuth
 
 import secret
 
 def ticket_list_get(ses, attributes):
-    r = ses.get(urljoin(attributes['url'], 'wd/query/list.rails?class_name=IncidentManagement.Incident&query=_MyGroupIncidentWorkload&page_size=1000'))
+    # Reset timezone to Europe/London so as to not be too annoying for the user, but
+    # Yes, requesting "GMT Standard Time" gives you "Europe/London". If you actually wanted GMT then
+    # you should have asked for "UTC", dummy!
+    r = ses.get(urljoin(attributes['url'], 'wd/logon/changeTimeZone.rails?key=GMT%20Standard%20Time'))
+    r.raise_for_status()
+
+    r = ses.get(urljoin(attributes['url'], 'wd/query/list.rails?class_name=IncidentManagement.Incident&query=_MyGroupIncidentWorkload&page_size=1'))
     r.raise_for_status()
     return r.text
 
@@ -26,14 +34,21 @@ def ticket_list_parse(tickets):
 def ticket_details_parse(body):
     soup = BeautifulSoup(body, 'html.parser')
     return {
+        'timezone': soup.find(id='timezoneBox').span.text,
         'detail': soup.find(id='content'),
         'detail_params': json.loads(soup.find(id='original_values')['value']),
     }
 
+DATETIME_FORMAT = '%m/%d/%Y %I:%M:%S %p'
+DATETIME_TZ = pytz.timezone('Europe/London')
+
+def parse_datetime(d):
+    return DATETIME_TZ.localize(datetime.datetime.strptime(d, DATETIME_FORMAT))
+
 def ticket_task_build(ticket):
     t = {
-        'webdesk_created': ticket['detail_params']['CreationDate852'],
-        'webdesk_breach': ticket['detail_params']['BreachTime850'],
+        'webdesk_created': parse_datetime(ticket['detail_params']['CreationDate852']),
+        'webdesk_breach': parse_datetime(ticket['detail_params']['BreachTime850']),
         'webdesk_key': ticket['list_params']['key'],
         'webdesk_url': ticket['url'],
         'webdesk_group': ticket['detail_params']['_CurrentAssignedGroup'],
@@ -54,10 +69,13 @@ def ticket_task_build(ticket):
         t['webdesk_department'] = department
 
     response = ticket['detail'].find(id='mainForm-ResponseLevel55Display')['value']
-    m = re.search('(\d+)\s+(Hours|Days)', response)
-    assert m
-    if m:
-        t['webdesk_due'] = m.groups()
+    m = re.search('(\S+)\s+(Hours|Days)', response)
+    if m[2] == 'Hours':
+        due_delta = datetime.timedelta(hours=int(m[1]))
+    elif m[2] == 'Days':
+        # TODO working days
+        due_delta = datetime.timedelta(days=int(m[1]))
+    t['webdesk_due'] = t['webdesk_created'] + due_delta
 
     return t
 
