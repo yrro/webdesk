@@ -24,7 +24,11 @@ def main(argv):
 
     import ipdb; ipdb.set_trace()
 
-    #new_tickets = tickets.keys() - tasks_.keys()
+    for k in new_tasks:
+        t = tickets[k]
+        d = t['task']['webdesk_details']
+        d = d[0:100] + ('…' if d[100:] else '')
+        tw.task_add(d, **t['task'])
 
     #tw.task_add('test', webdesk_key=ticket['list_params']['key'])
 
