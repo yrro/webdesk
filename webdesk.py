@@ -58,7 +58,7 @@ def ticket_task_build(ticket):
         'webdesk_impact': ticket['detail'].find(id='mainForm-_ImpactDisplay')['value'],
         'webdesk_customer': ticket['detail'].find(id='mainForm-RaiseUser2Display')['value'],
         'webdesk_number': int(ticket['detail'].find(id='contentTitleText').text.split()[-1]),
-        'webdesk_details': BeautifulSoup(ticket['detail_params']['Description49'], 'html.parser').get_text()
+        'webdesk_details': re.sub(r'\s+', ' ', BeautifulSoup(ticket['detail_params']['Description49'], 'html.parser').get_text(), flags=re.UNICODE)
     }
 
     analyst = ticket['detail_params']['_CurrentAssignedAnalyst']
