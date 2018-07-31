@@ -18,6 +18,7 @@ UDA = {
     'webdesk_updated': {'label': 'WebDesk last update', 'type': 'date'},
     'webdesk_due': {'label': 'WebDesk due', 'type': 'date'},
     'webdesk_breach': {'label': 'WebDesk breach', 'type': 'date'},
+    'webdesk_details': {'label': 'WebDesk details', 'type': 'string'},
 }
 
 def get_tw():
