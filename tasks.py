@@ -14,9 +14,10 @@ UDA = {
     'webdesk_group': {'label': 'WebDesk assigned group', 'type': 'string'},
     'webdesk_customer': {'label': 'WebDesk customer', 'type': 'string'},
     'webdesk_number': {'label': 'WebDesk ticket number', 'type': 'numeric'},
-    'webdesk_created': {'label': 'WebDesk creation date', 'type': 'date'},
-    'webdesk_due': {'label': 'WebDesk due date', 'type': 'date'},
-    'webdesk_breach': {'label': 'WebDesk breach date', 'type': 'date'},
+    'webdesk_created': {'label': 'WebDesk creation ', 'type': 'date'},
+    'webdesk_updated': {'label': 'WebDesk last update', 'type': 'date'},
+    'webdesk_due': {'label': 'WebDesk due', 'type': 'date'},
+    'webdesk_breach': {'label': 'WebDesk breach', 'type': 'date'},
 }
 
 def get_tw():

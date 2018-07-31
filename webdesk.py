@@ -49,6 +49,7 @@ def ticket_task_build(ticket):
     t = {
         'webdesk_created': parse_datetime(ticket['detail_params']['CreationDate852']),
         'webdesk_breach': parse_datetime(ticket['detail_params']['BreachTime850']),
+        'webdesk_updated': parse_datetime(ticket['detail_params']['LastUpdate854']),
         'webdesk_key': ticket['list_params']['key'],
         'webdesk_url': ticket['url'],
         'webdesk_group': ticket['detail_params']['_CurrentAssignedGroup'],
