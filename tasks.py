@@ -72,7 +72,7 @@ def _push_properties(task: Dict[str, Any], initial: bool) -> None:
 
     m = re.search('(\S+)\s+(Hours|Days)', task['webdesk_response'])
     if m[2] == 'Hours':
-        due = entry + timedelta(hour=int(m[1]))
+        due = entry + timedelta(hours=int(m[1]))
     elif m[2] == 'Days':
         due = entry
         d = int(m[1])
