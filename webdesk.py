@@ -14,7 +14,7 @@ from requests_ntlm import HttpNtlmAuth
 
 import secret
 
-def ticket_list_get(ses: Session, attributes: Dict[str, str]) -> Generator[str, None, None]:
+def ticket_pages(ses: Session, attributes: Dict[str, str]) -> Generator[BeautifulSoup, None, None]:
     # Reset timezone to Europe/London so as to not be too annoying for the user, but
     # Yes, requesting "GMT Standard Time" gives you "Europe/London". If you actually wanted GMT then
     # you should have asked for "UTC", dummy!
@@ -29,13 +29,12 @@ def ticket_list_get(ses: Session, attributes: Dict[str, str]) -> Generator[str, 
         soup = BeautifulSoup(r.text, 'html.parser')
         m = re.match('(\S+)\s+of\s+(\S+)', soup.find(id='list-pageNumber')['watermark'])
         last_page = int(m[2])
-        yield r.text
+        yield soup
         if page == last_page:
             break
 
-def ticket_list_parse(tickets: str) -> Generator[Dict[str, Any], None, None]:
-    soup = BeautifulSoup(tickets, 'html.parser')
-    for row in soup.find(id='listBody').find_all('tr', 'listBodyRow'):
+def tickets_from_page(page: BeautifulSoup) -> Generator[Dict[str, Any], None, None]:
+    for row in page.find(id='listBody').find_all('tr', 'listBodyRow'):
         yield {
             'list': row,
             'list_params': json.loads(row['params']),
@@ -101,8 +100,8 @@ def get_tickets(attributes: Dict[str, str]) -> Dict[str, Dict[str, Any]]:
         password = secret.get_password(attributes)
         ses.auth = HttpNtlmAuth(attributes['user'], password)
 
-        for page in ticket_list_get(ses, attributes):
-            for t in ticket_list_parse(page):
+        for page in ticket_pages(ses, attributes):
+            for t in tickets_from_page(page):
                 tickets[t['list_params']['key']] = {
                     'url': urljoin(
                         attributes['url'],
