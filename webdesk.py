@@ -1,5 +1,4 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta
 import itertools
 import json
 import logging
@@ -8,7 +7,6 @@ from typing import *
 from urllib.parse import urljoin, urlencode
 
 from bs4 import BeautifulSoup
-import pytz
 from requests import Session
 from requests_ntlm import HttpNtlmAuth
 
@@ -19,7 +17,7 @@ def ticket_pages(ses: Session, attributes: Dict[str, str]) -> Generator[Beautifu
     # "GMT Standard Time" gives you "Europe/London". If you actually wanted GMT
     # then you should have asked for "UTC", dummy! Naturally this
     # misunderstanding can be blamed on Microsoft.
-    # <https://support.microsoft.com/en-gb/help/973627/microsoft-time-zone-index-values>
+    # <http://unicode.org/repos/cldr/trunk/common/supplemental/windowsZones.xml>
     r = ses.get(urljoin(attributes['url'], 'wd/logon/changeTimeZone.rails?key=GMT%20Standard%20Time'))
     r.raise_for_status()
 
@@ -50,20 +48,16 @@ def ticket_details_parse(body: str) -> Dict[str, Any]:
         'detail_params': json.loads(soup.find(id='original_values')['value']),
     }
 
-DATETIME_FORMAT = '%m/%d/%Y %I:%M:%S %p'
-DATETIME_TZ = pytz.timezone('Europe/London')
-
-def parse_datetime(d: str) -> datetime:
-    dt = datetime.strptime(d, DATETIME_FORMAT)
-    ldt = DATETIME_TZ.localize(dt)
-    logging.debug('%s -> %s -> %s', d, dt, ldt)
-    return ldt
-
 def ticket_task_build(ticket: Dict[str, Any]) -> Dict[str, Any]:
-    t = {
-        'webdesk_created': parse_datetime(ticket['detail_params']['CreationDate852']),
-        'webdesk_breach': parse_datetime(ticket['detail_params']['BreachTime850']),
-        'webdesk_updated': parse_datetime(ticket['detail_params']['LastUpdate854']),
+    d = ticket['detail_params']['Description49']
+    d = BeautifulSoup(d, 'html.parser')
+    d = re.sub(r'\s+', ' ', d.get_text(' '), flags=re.UNICODE)
+
+    return {
+        'webdesk_details': d,
+        'webdesk_created': ticket['detail_params']['CreationDate852'],
+        'webdesk_breach': ticket['detail_params']['BreachTime850'],
+        'webdesk_updated': ticket['detail_params']['LastUpdate854'],
         'webdesk_key': ticket['list_params']['key'],
         'webdesk_url': ticket['url'],
         'webdesk_group': ticket['detail_params']['_CurrentAssignedGroup'],
@@ -74,25 +68,8 @@ def ticket_task_build(ticket: Dict[str, Any]) -> Dict[str, Any]:
         'webdesk_number': int(ticket['detail'].find(id='contentTitleText').text.split()[-1]),
         'webdesk_analyst': ticket['detail_params']['_CurrentAssignedAnalyst'] or None,
         'webdesk_department': ticket['detail'].find(id='mainForm-_PHEDepartment')['value'] or None,
+        'webdesk_response': ticket['detail'].find(id='mainForm-ResponseLevel55Display')['value'],
     }
-
-    response = ticket['detail'].find(id='mainForm-ResponseLevel55Display')['value']
-    m = re.search('(\S+)\s+(Hours|Days)', response)
-    if m[2] == 'Hours':
-        due = t['webdesk_created'] + timedelta(hour=int(m[1]))
-    elif m[2] == 'Days':
-        due = t['webdesk_created']
-        d = int(m[1])
-        while d > 0:
-            due += timedelta(days=1)
-            if due.weekday() < 5:
-                d -= 1
-    t['webdesk_due'] = due
-
-    description = BeautifulSoup(ticket['detail_params']['Description49'], 'html.parser')
-    t['webdesk_details'] = re.sub(r'\s+', ' ', description.get_text(' '), flags=re.UNICODE)
-
-    return t
 
 def get_tickets(attributes: Dict[str, str]) -> Dict[str, Dict[str, Any]]:
     tickets = {}

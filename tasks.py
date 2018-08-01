@@ -1,10 +1,14 @@
 import logging
+from datetime import datetime, timedelta
+import re
 from typing import *
 
+import pytz
 from taskw import TaskWarrior
 from taskw.task import Task
 
-from bs4 import BeautifulSoup
+_DATETIME_FORMAT = '%m/%d/%Y %I:%M:%S %p'
+_DATETIME_TZ = pytz.timezone('Europe/London')
 
 _UDA = {
     'webdesk_key': {'label': 'WebDesk key', 'type': 'string'},
@@ -18,12 +22,18 @@ _UDA = {
     'webdesk_group': {'label': 'WebDesk assigned group', 'type': 'string'},
     'webdesk_customer': {'label': 'WebDesk customer', 'type': 'string'},
     'webdesk_number': {'label': 'WebDesk ticket number', 'type': 'numeric'},
-    'webdesk_created': {'label': 'WebDesk creation ', 'type': 'date'},
-    'webdesk_updated': {'label': 'WebDesk last update', 'type': 'date'},
-    'webdesk_due': {'label': 'WebDesk due', 'type': 'date'},
-    'webdesk_breach': {'label': 'WebDesk breach', 'type': 'date'},
+    'webdesk_created': {'label': 'WebDesk creation ', 'type': 'string'},
+    'webdesk_updated': {'label': 'WebDesk last update', 'type': 'string'},
+    'webdesk_breach': {'label': 'WebDesk breach', 'type': 'string'},
     'webdesk_details': {'label': 'WebDesk details', 'type': 'string'},
+    'webdesk_response': {'label': 'WebDesk resolution level', 'type': 'string'},
 }
+
+def _parse_datetime(d: str) -> datetime:
+    dt = datetime.strptime(d, _DATETIME_FORMAT)
+    ldt = _DATETIME_TZ.localize(dt)
+    logging.debug('%s -> %s -> %s', d, dt, ldt)
+    return ldt
 
 def get_tw() -> TaskWarrior:
     return TaskWarrior(config_overrides={'uda': _UDA}, marshal=True)
@@ -41,10 +51,9 @@ def get_tasks(tw) -> Dict[str, Dict[str, Any]]:
 
 def add_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
     logging.debug('Adding task %s', task['webdesk_key'])
+    _push_properties(task, initial=True)
     d = task['webdesk_details']
     d = d[0:100] + ('…' if d[100:] else '')
-    _push_properties(task, initial=True)
-
     r = tw.task_add(d, **task)
     logging.log(logging.INFO+5, 'Added task %d: %s', r['id'], r['description'])
 
@@ -58,4 +67,15 @@ def update_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
         logging.log(logging.INFO+5, 'Updated task %d (%s)', id_, ', '.join(k for k, v in r.items() if v == True))
 
 def _push_properties(task: Dict[str, Any], initial: bool) -> None:
-    task['due'] = task['webdesk_due']
+    created = _parse_datetime(task['webdesk_created'])
+    m = re.search('(\S+)\s+(Hours|Days)', task['webdesk_response'])
+    if m[2] == 'Hours':
+        due = created + timedelta(hour=int(m[1]))
+    elif m[2] == 'Days':
+        due = created
+        d = int(m[1])
+        while d > 0:
+            due += timedelta(days=1)
+            if due.weekday() < 5:
+                d -= 1
+    task['due'] = due
