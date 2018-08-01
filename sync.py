@@ -15,22 +15,23 @@ def main(argv):
         attributes['url'] += '/'
 
     tickets = webdesk.get_tickets(attributes)
-    tasks_ = tasks.get_tasks()
+
+    tw = tasks.get_tw()
+    tasks_ = tasks.get_tasks(tw)
 
     new_tasks = tickets.keys() - tasks_.keys()
     existing_tasks = tickets.keys() & tasks_.keys()
     missing_tasks = tasks_.keys() - tickets.keys()
     logging.info('%d new, %d existing and %d missing tasks', len(new_tasks), len(existing_tasks), len(missing_tasks))
 
-    import ipdb; ipdb.set_trace()
-
     for k in new_tasks:
-        t = tickets[k]
-        d = t['task']['webdesk_details']
-        d = d[0:100] + ('…' if d[100:] else '')
-        tw.task_add(d, **t['task'])
+        tasks.add_task(tw, tickets[k]['task'])
 
-    #tw.task_add('test', webdesk_key=ticket['list_params']['key'])
+    for k in existing_tasks:
+        tasks.update_task(tw, tickets[k]['task'])
+
+    for k in missing_tasks:
+        logging.debug('Checking task <%s> for completion', k)
 
 if __name__ == '__main__':
     main(sys.argv)

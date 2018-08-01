@@ -19,7 +19,7 @@ def ticket_list_get(ses, attributes):
     r = ses.get(urljoin(attributes['url'], 'wd/logon/changeTimeZone.rails?key=GMT%20Standard%20Time'))
     r.raise_for_status()
 
-    r = ses.get(urljoin(attributes['url'], 'wd/query/list.rails?class_name=IncidentManagement.Incident&query=_MyGroupIncidentWorkload&page_size=1'))
+    r = ses.get(urljoin(attributes['url'], 'wd/query/list.rails?class_name=IncidentManagement.Incident&query=_MyGroupIncidentWorkload&page_size=5'))
     r.raise_for_status()
     return r.text
 
