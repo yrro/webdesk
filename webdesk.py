@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import datetime
+from datetime import datetime, timedelta
 import itertools
 import json
 import logging
@@ -15,9 +15,11 @@ from requests_ntlm import HttpNtlmAuth
 import secret
 
 def ticket_pages(ses: Session, attributes: Dict[str, str]) -> Generator[BeautifulSoup, None, None]:
-    # Reset timezone to Europe/London so as to not be too annoying for the user, but
-    # Yes, requesting "GMT Standard Time" gives you "Europe/London". If you actually wanted GMT then
-    # you should have asked for "UTC", dummy!
+    # Reset timezone so as to not be too annoying for the user. Yes, requesting
+    # "GMT Standard Time" gives you "Europe/London". If you actually wanted GMT
+    # then you should have asked for "UTC", dummy! Naturally this
+    # misunderstanding can be blamed on Microsoft.
+    # <https://support.microsoft.com/en-gb/help/973627/microsoft-time-zone-index-values>
     r = ses.get(urljoin(attributes['url'], 'wd/logon/changeTimeZone.rails?key=GMT%20Standard%20Time'))
     r.raise_for_status()
 
@@ -51,8 +53,11 @@ def ticket_details_parse(body: str) -> Dict[str, Any]:
 DATETIME_FORMAT = '%m/%d/%Y %I:%M:%S %p'
 DATETIME_TZ = pytz.timezone('Europe/London')
 
-def parse_datetime(d: str) -> datetime.datetime:
-    return DATETIME_TZ.localize(datetime.datetime.strptime(d, DATETIME_FORMAT))
+def parse_datetime(d: str) -> datetime:
+    dt = datetime.strptime(d, DATETIME_FORMAT)
+    ldt = DATETIME_TZ.localize(dt)
+    logging.debug('%s -> %s -> %s', d, dt, ldt)
+    return ldt
 
 def ticket_task_build(ticket: Dict[str, Any]) -> Dict[str, Any]:
     t = {
@@ -74,12 +79,12 @@ def ticket_task_build(ticket: Dict[str, Any]) -> Dict[str, Any]:
     response = ticket['detail'].find(id='mainForm-ResponseLevel55Display')['value']
     m = re.search('(\S+)\s+(Hours|Days)', response)
     if m[2] == 'Hours':
-        due = t['webdesk_created'] + datetime.timedelta(hour=int(m[1]))
+        due = t['webdesk_created'] + timedelta(hour=int(m[1]))
     elif m[2] == 'Days':
         due = t['webdesk_created']
         d = int(m[1])
         while d > 0:
-            due += datetime.timedelta(days=1)
+            due += timedelta(days=1)
             if due.weekday() < 5:
                 d -= 1
     t['webdesk_due'] = due
