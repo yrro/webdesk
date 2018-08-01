@@ -67,20 +67,14 @@ def ticket_task_build(ticket: Dict[str, Any]) -> Dict[str, Any]:
         'webdesk_impact': ticket['detail'].find(id='mainForm-_ImpactDisplay')['value'],
         'webdesk_customer': ticket['detail'].find(id='mainForm-RaiseUser2Display')['value'],
         'webdesk_number': int(ticket['detail'].find(id='contentTitleText').text.split()[-1]),
+        'webdesk_analyst': ticket['detail_params']['_CurrentAssignedAnalyst'] or None,
+        'webdesk_department': ticket['detail'].find(id='mainForm-_PHEDepartment')['value'] or None,
     }
-
-    analyst = ticket['detail_params']['_CurrentAssignedAnalyst']
-    if analyst:
-        t['webdesk_analyst'] = analyst
-
-    department = ticket['detail'].find(id='mainForm-_PHEDepartment')['value']
-    if department:
-        t['webdesk_department'] = department
 
     response = ticket['detail'].find(id='mainForm-ResponseLevel55Display')['value']
     m = re.search('(\S+)\s+(Hours|Days)', response)
     if m[2] == 'Hours':
-        t['webdesk_due'] = t['webdesk_created'] + datetime.timedelta(hour=int(m[1]))
+        due = t['webdesk_created'] + datetime.timedelta(hour=int(m[1]))
     elif m[2] == 'Days':
         due = t['webdesk_created']
         d = int(m[1])
@@ -88,7 +82,7 @@ def ticket_task_build(ticket: Dict[str, Any]) -> Dict[str, Any]:
             due += datetime.timedelta(days=1)
             if due.weekday() < 5:
                 d -= 1
-        t['webdesk_due'] = due
+    t['webdesk_due'] = due
 
     description = BeautifulSoup(ticket['detail_params']['Description49'], 'html.parser')
     t['webdesk_details'] = re.sub(r'\s+', ' ', description.get_text(' '), flags=re.UNICODE)
