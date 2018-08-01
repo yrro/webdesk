@@ -71,6 +71,7 @@ def ticket_task_build(ticket: Dict[str, Any]) -> Dict[str, Any]:
         'webdesk_analyst': ticket['detail_params']['_CurrentAssignedAnalyst'] or None,
         'webdesk_department': ticket['detail'].find(id='mainForm-_PHEDepartment')['value'] or None,
         'webdesk_response': ticket['detail'].find(id='mainForm-ResponseLevel55Display')['value'],
+        'webdesk_status': ticket['detail'].find(id='mainForm-Status55Display')['value'],
     }
 
 def get_tickets(attributes: Dict[str, str]) -> Dict[str, Dict[str, Any]]:

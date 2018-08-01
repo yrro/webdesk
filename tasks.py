@@ -27,6 +27,7 @@ _UDA = {
     'webdesk_breach': {'label': 'WebDesk breach', 'type': 'string'},
     'webdesk_details': {'label': 'WebDesk details', 'type': 'string'},
     'webdesk_response': {'label': 'WebDesk resolution level', 'type': 'string'},
+    'webdesk_status': {'label': 'WebDesk status', 'type': 'string'},
 }
 
 def _parse_datetime(d: str) -> datetime:
