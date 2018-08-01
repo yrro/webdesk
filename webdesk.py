@@ -3,11 +3,12 @@ import datetime
 import json
 import logging
 import re
+from typing import *
 from urllib.parse import urljoin, urlencode
 
 from bs4 import BeautifulSoup
 import pytz
-import requests
+from requests import Session
 from requests_ntlm import HttpNtlmAuth
 
 import secret
@@ -23,7 +24,7 @@ def ticket_list_get(ses, attributes):
     r.raise_for_status()
     return r.text
 
-def ticket_list_parse(tickets):
+def ticket_list_parse(tickets: str) -> Generator[Dict[str, Any], None, None]:
     soup = BeautifulSoup(tickets, 'html.parser')
     for row in soup.find(id='listBody').find_all('tr', 'listBodyRow'):
         yield {
@@ -31,7 +32,7 @@ def ticket_list_parse(tickets):
             'list_params': json.loads(row['params']),
         }
 
-def ticket_details_parse(body):
+def ticket_details_parse(body: str) -> Dict[str, Any]:
     soup = BeautifulSoup(body, 'html.parser')
     return {
         'timezone': soup.find(id='timezoneBox').span.text,
@@ -42,10 +43,10 @@ def ticket_details_parse(body):
 DATETIME_FORMAT = '%m/%d/%Y %I:%M:%S %p'
 DATETIME_TZ = pytz.timezone('Europe/London')
 
-def parse_datetime(d):
+def parse_datetime(d: str) -> datetime.datetime:
     return DATETIME_TZ.localize(datetime.datetime.strptime(d, DATETIME_FORMAT))
 
-def ticket_task_build(ticket):
+def ticket_task_build(ticket: Dict[str, Any]) -> Dict[str, Any]:
     t = {
         'webdesk_created': parse_datetime(ticket['detail_params']['CreationDate852']),
         'webdesk_breach': parse_datetime(ticket['detail_params']['BreachTime850']),
@@ -84,10 +85,10 @@ def ticket_task_build(ticket):
 
     return t
 
-def get_tickets(attributes):
+def get_tickets(attributes: Dict[str, str]) -> Dict[str, Dict[str, Any]]:
     tickets = {}
 
-    with requests.Session() as ses:
+    with Session() as ses:
         password = secret.get_password(attributes)
         ses.auth = HttpNtlmAuth(attributes['user'], password)
 
