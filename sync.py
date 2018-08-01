@@ -36,7 +36,7 @@ def main(argv) -> int:
         tasks.update_task(tw, tickets[k]['task'])
 
     for k in missing_tasks:
-        logger.notice('Checking task <%s> for completion - not implemented', k)
+        logger.log(logging.INFO+5, 'Checking task <%s> for completion - not implemented', k)
 
     return 0
 
