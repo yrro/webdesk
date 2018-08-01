@@ -7,9 +7,9 @@ import tasks
 def main(argv) -> int:
     logging.addLevelName(logging.INFO+5, 'NOTICE')
     logging.basicConfig()
-    logging.getLogger().setLevel(logging.DEBUG)
-    logging.getLogger('requests.packages.urllib3').setLevel(logging.DEBUG)
-    logging.getLogger('requests.packages.urllib3').propagate = True
+    logging.getLogger().setLevel(logging.INFO)
+    #logging.getLogger('requests.packages.urllib3').setLevel(logging.DEBUG)
+    #logging.getLogger('requests.packages.urllib3').propagate = True
 
     attributes = {'user': argv[1], 'url': argv[2]}
     if not attributes['url'].endswith('/'):
