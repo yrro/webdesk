@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import datetime
+import itertools
 import json
 import logging
 import re
@@ -13,16 +14,24 @@ from requests_ntlm import HttpNtlmAuth
 
 import secret
 
-def ticket_list_get(ses, attributes):
+def ticket_list_get(ses: Session, attributes: Dict[str, str]) -> Generator[str, None, None]:
     # Reset timezone to Europe/London so as to not be too annoying for the user, but
     # Yes, requesting "GMT Standard Time" gives you "Europe/London". If you actually wanted GMT then
     # you should have asked for "UTC", dummy!
     r = ses.get(urljoin(attributes['url'], 'wd/logon/changeTimeZone.rails?key=GMT%20Standard%20Time'))
     r.raise_for_status()
 
-    r = ses.get(urljoin(attributes['url'], 'wd/query/list.rails?class_name=IncidentManagement.Incident&query=_MyGroupIncidentWorkload&page_size=5'))
-    r.raise_for_status()
-    return r.text
+    last_page: Optional[int] = None
+    for page in itertools.count(1):
+        logging.debug('Fetching tickets, page %d/%s', page, last_page if last_page is not None else '?')
+        r = ses.get(urljoin(attributes['url'], 'wd/query/list.rails?class_name=IncidentManagement.Incident&query=_MyGroupIncidentWorkload&page_size=100&page={}'.format(page)))
+        r.raise_for_status()
+        soup = BeautifulSoup(r.text, 'html.parser')
+        m = re.match('(\S+)\s+of\s+(\S+)', soup.find(id='list-pageNumber')['watermark'])
+        last_page = int(m[2])
+        yield r.text
+        if page == last_page:
+            break
 
 def ticket_list_parse(tickets: str) -> Generator[Dict[str, Any], None, None]:
     soup = BeautifulSoup(tickets, 'html.parser')
@@ -92,18 +101,19 @@ def get_tickets(attributes: Dict[str, str]) -> Dict[str, Dict[str, Any]]:
         password = secret.get_password(attributes)
         ses.auth = HttpNtlmAuth(attributes['user'], password)
 
-        for t in ticket_list_parse(ticket_list_get(ses, attributes)):
-            tickets[t['list_params']['key']] = {
-                'url': urljoin(
-                    attributes['url'],
-                    'wd/object/open.rails?'
-                        + urlencode([
-                            ('class_name', t['list_params']['launch_class_name']),
-                            ('key', t['list_params']['launch_key'])
-                        ])
-                ),
-                **t,
-            }
+        for page in ticket_list_get(ses, attributes):
+            for t in ticket_list_parse(page):
+                tickets[t['list_params']['key']] = {
+                    'url': urljoin(
+                        attributes['url'],
+                        'wd/object/open.rails?'
+                            + urlencode([
+                                ('class_name', t['list_params']['launch_class_name']),
+                                ('key', t['list_params']['launch_key'])
+                            ])
+                    ),
+                    **t,
+                }
 
         with ThreadPoolExecutor(8) as ex:
             # map futures to ticket dicts
