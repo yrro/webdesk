@@ -5,7 +5,6 @@ from typing import *
 
 import pytz
 from taskw import TaskWarrior
-from taskw.task import Task
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,6 @@ _UDA = {
     'webdesk_impact': {'label': 'WebDesk impact', 'type': 'string'},
     'webdesk_analyst': {'label': 'WebDesk analyst', 'type': 'string'},
     'webdesk_group': {'label': 'WebDesk assigned group', 'type': 'string'},
-    'webdesk_customer': {'label': 'WebDesk customer', 'type': 'string'},
     'webdesk_number': {'label': 'WebDesk ticket number', 'type': 'numeric'},
     'webdesk_created': {'label': 'WebDesk creation ', 'type': 'string'},
     'webdesk_updated': {'label': 'WebDesk last update', 'type': 'string'},
@@ -66,7 +64,7 @@ def update_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
     r = twt.update(task)
     if True in r.values():
         tw.task_update(twt)
-        logger.log(logging.INFO+5, 'Updated task %d (%s)', id_, ', '.join(k for k, v in r.items() if v == True))
+        logger.log(logging.INFO+5, 'Updated task %d (%s)', id_, ', '.join(k for k, v in r.items() if v is True))
 
 def _push_properties(task: Dict[str, Any], initial: bool) -> None:
     entry = _parse_datetime(task['webdesk_created'])
