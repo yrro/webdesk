@@ -55,7 +55,7 @@ def add_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
     logger.debug('Adding task %s', task['webdesk_key'])
     _push_properties(task, initial=True)
     d = task['webdesk_details']
-    d = d[0:100] + ('…' if d[100:] else '')
+    d = d[0:100].strip() + ('…' if d[100:] else '')
     r = tw.task_add(d, **task)
     logger.log(logging.INFO+5, 'Added task %d: %s', r['id'], r['description'])
 
