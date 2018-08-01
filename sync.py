@@ -4,7 +4,7 @@ import sys
 import webdesk
 import tasks
 
-def main(argv):
+def main(argv) -> int:
     logging.basicConfig()
     logging.getLogger().setLevel(logging.DEBUG)
     logging.getLogger('requests.packages.urllib3').setLevel(logging.DEBUG)
@@ -33,5 +33,7 @@ def main(argv):
     for k in missing_tasks:
         logging.debug('Checking task <%s> for completion', k)
 
+    return 0
+
 if __name__ == '__main__':
-    main(sys.argv)
+    sys.exit(main(sys.argv))
