@@ -74,7 +74,7 @@ def ticket_task_build(ticket: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 def get_tickets(attributes: Dict[str, str]) -> Dict[str, Dict[str, Any]]:
-    tickets = {}
+    tickets: Dict[str, Any] = {}
 
     with Session() as ses:
         password = secret.get_password(attributes)
