@@ -67,7 +67,6 @@ def ticket_task_build(ticket: Dict[str, Any]) -> Dict[str, Any]:
         'webdesk_impact': ticket['detail'].find(id='mainForm-_ImpactDisplay')['value'],
         'webdesk_customer': ticket['detail'].find(id='mainForm-RaiseUser2Display')['value'],
         'webdesk_number': int(ticket['detail'].find(id='contentTitleText').text.split()[-1]),
-        'webdesk_details': re.sub(r'\s+', ' ', BeautifulSoup(ticket['detail_params']['Description49'], 'html.parser').get_text(), flags=re.UNICODE)
     }
 
     analyst = ticket['detail_params']['_CurrentAssignedAnalyst']
@@ -90,6 +89,9 @@ def ticket_task_build(ticket: Dict[str, Any]) -> Dict[str, Any]:
             if due.weekday() < 5:
                 d -= 1
         t['webdesk_due'] = due
+
+    description = BeautifulSoup(ticket['detail_params']['Description49'], 'html.parser')
+    t['webdesk_details'] = re.sub(r'\s+', ' ', description.get_text(' '), flags=re.UNICODE)
 
     return t
 
