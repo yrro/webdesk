@@ -69,12 +69,14 @@ def update_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
         logger.log(logging.INFO+5, 'Updated task %d (%s)', id_, ', '.join(k for k, v in r.items() if v == True))
 
 def _push_properties(task: Dict[str, Any], initial: bool) -> None:
-    created = _parse_datetime(task['webdesk_created'])
+    entry = _parse_datetime(task['webdesk_created'])
+    task['entry'] = entry
+
     m = re.search('(\S+)\s+(Hours|Days)', task['webdesk_response'])
     if m[2] == 'Hours':
-        due = created + timedelta(hour=int(m[1]))
+        due = entry + timedelta(hour=int(m[1]))
     elif m[2] == 'Days':
-        due = created
+        due = entry
         d = int(m[1])
         while d > 0:
             due += timedelta(days=1)
