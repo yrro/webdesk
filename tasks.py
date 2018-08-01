@@ -49,11 +49,13 @@ def add_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
     logging.log(logging.INFO+5, 'Added task %d: %s', r['id'], r['description'])
 
 def update_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
-    twt = tw.get_task(webdesk_key=task['webdesk_key'])[1]
-    logging.debug('Updating task <%s>: %s', task['webdesk_key'], twt['description'])
-    twt.update(task)
-    _push_properties(twt, initial=False)
-    tw.task_update(twt)
+    logging.debug('Maybe updating task %s', task['webdesk_key'])
+    _push_properties(task, initial=False)
+    id_, twt = tw.get_task(webdesk_key=task['webdesk_key'])
+    r = twt.update(task)
+    if True in r.values():
+        tw.task_update(twt)
+        logging.log(logging.INFO+5, 'Updated task %d (%s)', id_, ', '.join(k for k, v in r.items() if v == True))
 
 def _push_properties(task: Dict[str, Any], initial: bool) -> None:
     task['due'] = task['webdesk_due']
