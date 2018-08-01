@@ -12,6 +12,8 @@ from requests_ntlm import HttpNtlmAuth
 
 import secret
 
+logger = logging.getLogger(__name__)
+
 def ticket_pages(ses: Session, attributes: Dict[str, str]) -> Generator[BeautifulSoup, None, None]:
     # Reset timezone so as to not be too annoying for the user. Yes, requesting
     # "GMT Standard Time" gives you "Europe/London". If you actually wanted GMT
@@ -23,7 +25,7 @@ def ticket_pages(ses: Session, attributes: Dict[str, str]) -> Generator[Beautifu
 
     last_page: Optional[int] = None
     for page in itertools.count(1):
-        logging.debug('Fetching tickets, page %d/%s', page, last_page if last_page is not None else '?')
+        logger.debug('Fetching tickets, page %d/%s', page, last_page if last_page is not None else '?')
         r = ses.get(urljoin(attributes['url'], 'wd/query/list.rails?class_name=IncidentManagement.Incident&query=_MyGroupIncidentWorkload&page_size=100&page={}'.format(page)))
         r.raise_for_status()
         soup = BeautifulSoup(r.text, 'html.parser')

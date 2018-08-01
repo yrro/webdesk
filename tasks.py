@@ -7,6 +7,8 @@ import pytz
 from taskw import TaskWarrior
 from taskw.task import Task
 
+logger = logging.getLogger(__name__)
+
 _DATETIME_FORMAT = '%m/%d/%Y %I:%M:%S %p'
 _DATETIME_TZ = pytz.timezone('Europe/London')
 
@@ -32,7 +34,7 @@ _UDA = {
 def _parse_datetime(d: str) -> datetime:
     dt = datetime.strptime(d, _DATETIME_FORMAT)
     ldt = _DATETIME_TZ.localize(dt)
-    logging.debug('%s -> %s -> %s', d, dt, ldt)
+    logger.debug('%s -> %s -> %s -> %s', d, dt, ldt, ldt.astimezone(pytz.utc))
     return ldt
 
 def get_tw() -> TaskWarrior:
@@ -50,21 +52,21 @@ def get_tasks(tw) -> Dict[str, Dict[str, Any]]:
     })}
 
 def add_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
-    logging.debug('Adding task %s', task['webdesk_key'])
+    logger.debug('Adding task %s', task['webdesk_key'])
     _push_properties(task, initial=True)
     d = task['webdesk_details']
     d = d[0:100] + ('…' if d[100:] else '')
     r = tw.task_add(d, **task)
-    logging.log(logging.INFO+5, 'Added task %d: %s', r['id'], r['description'])
+    logger.log(logging.INFO+5, 'Added task %d: %s', r['id'], r['description'])
 
 def update_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
-    logging.debug('Maybe updating task %s', task['webdesk_key'])
+    logger.debug('Maybe updating task %s', task['webdesk_key'])
     _push_properties(task, initial=False)
     id_, twt = tw.get_task(webdesk_key=task['webdesk_key'])
     r = twt.update(task)
     if True in r.values():
         tw.task_update(twt)
-        logging.log(logging.INFO+5, 'Updated task %d (%s)', id_, ', '.join(k for k, v in r.items() if v == True))
+        logger.log(logging.INFO+5, 'Updated task %d (%s)', id_, ', '.join(k for k, v in r.items() if v == True))
 
 def _push_properties(task: Dict[str, Any], initial: bool) -> None:
     created = _parse_datetime(task['webdesk_created'])

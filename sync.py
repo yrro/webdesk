@@ -4,6 +4,8 @@ import sys
 import webdesk
 import tasks
 
+logger = logging.getLogger(__name__)
+
 def main(argv) -> int:
     logging.addLevelName(logging.INFO+5, 'NOTICE')
     logging.basicConfig()
@@ -15,17 +17,17 @@ def main(argv) -> int:
     if not attributes['url'].endswith('/'):
         attributes['url'] += '/'
 
-    logging.info('Fetching tickets from WebDesk...')
+    logger.info('Fetching tickets from WebDesk...')
     tickets = webdesk.get_tickets(attributes)
 
     tw = tasks.get_tw()
-    logging.debug('Getting tickets from TaskWarrior...')
+    logger.debug('Getting tickets from TaskWarrior...')
     tasks_ = tasks.get_tasks(tw)
 
     new_tasks = tickets.keys() - tasks_.keys()
     existing_tasks = tickets.keys() & tasks_.keys()
     missing_tasks = tasks_.keys() - tickets.keys()
-    logging.info('%d new, %d existing and %d missing tasks', len(new_tasks), len(existing_tasks), len(missing_tasks))
+    logger.info('%d new, %d existing and %d missing tasks', len(new_tasks), len(existing_tasks), len(missing_tasks))
 
     for k in new_tasks:
         tasks.add_task(tw, tickets[k]['task'])
@@ -34,7 +36,7 @@ def main(argv) -> int:
         tasks.update_task(tw, tickets[k]['task'])
 
     for k in missing_tasks:
-        logging.notice('Checking task <%s> for completion - not implemented', k)
+        logger.notice('Checking task <%s> for completion - not implemented', k)
 
     return 0
 
