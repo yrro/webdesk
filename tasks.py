@@ -40,11 +40,13 @@ def get_tasks(tw) -> Dict[str, Dict[str, Any]]:
     })}
 
 def add_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
+    logging.debug('Adding task %s', task['webdesk_key'])
     d = task['webdesk_details']
     d = d[0:100] + ('…' if d[100:] else '')
-    logging.debug('Adding task <%s>: %s', task['webdesk_key'], d)
     _push_properties(task, initial=True)
-    tw.task_add(d, **task)
+
+    r = tw.task_add(d, **task)
+    logging.log(logging.INFO+5, 'Added task %d: %s', r['id'], r['description'])
 
 def update_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
     twt = tw.get_task(webdesk_key=task['webdesk_key'])[1]
