@@ -35,8 +35,12 @@ def main(argv) -> int:
     for k in existing_tasks:
         tasks.update_task(tw, tickets[k]['task'])
 
-    for k in missing_tasks:
-        logger.log(logging.INFO+5, 'Checking task <%s> for completion - not implemented', k)
+    if missing_tasks:
+        logger.info('Fetching missing tickets from WebDesk...')
+    missing_tickets = webdesk.get_tickets(attributes, {k: v for k, v in tasks_.items() if k in missing_tasks})
+    for k, v in missing_tickets.items():
+        tasks.update_task(tw, v['task'])
+        tasks.complete_task(tw, v['task'])
 
     return 0
 

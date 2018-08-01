@@ -60,7 +60,7 @@ def ticket_task_build(ticket: Dict[str, Any]) -> Dict[str, Any]:
         'webdesk_created': ticket['detail_params']['CreationDate852'],
         'webdesk_breach': ticket['detail_params']['BreachTime850'],
         'webdesk_updated': ticket['detail_params']['LastUpdate854'],
-        'webdesk_key': ticket['list_params']['key'],
+        'webdesk_key': ticket['detail'].find(id='key')['value'],
         'webdesk_url': ticket['url'],
         'webdesk_group': ticket['detail_params']['_CurrentAssignedGroup'],
         'webdesk_category': ticket['detail'].find(id='mainForm-Category2Display')['value'],
@@ -74,34 +74,45 @@ def ticket_task_build(ticket: Dict[str, Any]) -> Dict[str, Any]:
         'webdesk_status': ticket['detail'].find(id='mainForm-Status55Display')['value'],
     }
 
-def get_tickets(attributes: Dict[str, str]) -> Dict[str, Dict[str, Any]]:
+def get_tickets(attributes: Dict[str, str], only: Optional[Dict[str, Dict[str, Any]]] = None) -> Dict[str, Dict[str, Any]]:
     tickets: Dict[str, Any] = {}
 
     with Session() as ses:
         password = secret.get_password(attributes)
         ses.auth = HttpNtlmAuth(attributes['user'], password)
 
-        for page in ticket_pages(ses, attributes):
-            for t in tickets_from_page(page):
-                tickets[t['list_params']['key']] = {
-                    'url': urljoin(
-                        attributes['url'],
-                        'wd/object/open.rails?'
-                            + urlencode([
-                                ('class_name', t['list_params']['launch_class_name']),
-                                ('key', t['list_params']['launch_key'])
-                            ])
-                    ),
-                    **t,
+        if only is None:
+            for page in ticket_pages(ses, attributes):
+                for t in tickets_from_page(page):
+                    tickets[t['list_params']['key']] = {
+                        'url': urljoin(
+                            attributes['url'],
+                            'wd/object/open.rails?'
+                                + urlencode([
+                                    ('class_name', t['list_params']['launch_class_name']),
+                                    ('key', t['list_params']['launch_key'])
+                                ])
+                        ),
+                        **t,
+                    }
+        else:
+            for k, v in only.items():
+                tickets[k] = {
+                    'url': v['webdesk_url'],
+                    'task': v,
                 }
 
         with ThreadPoolExecutor(8) as ex:
             # map futures to ticket dicts
             f_to_ticket = {ex.submit(ses.get, t['url']): t for t in tickets.values()}
-            for rf in as_completed(f_to_ticket):
-                rf.result().raise_for_status()
-                t = f_to_ticket[rf]
-                t.update(ticket_details_parse(rf.result().text))
+            try:
+                for rf in as_completed(f_to_ticket):
+                    rf.result().raise_for_status()
+                    t = f_to_ticket[rf]
+                    t.update(ticket_details_parse(rf.result().text))
+            except KeyboardInterrupt:
+                logger.info('KeyboardInterrupt - waiting for futures to complete...')
+                raise
 
     for t in tickets.values():
         t['task'] = ticket_task_build(t)

@@ -67,6 +67,10 @@ def update_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
         tw.task_update(twt)
         logger.log(logging.INFO+5, 'Updated task %d (%s)', id_, ', '.join(k for k, v in r.items() if v is True))
 
+def complete_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
+    r = tw.task_done(webdesk_key=task['webdesk_key'])
+    logger.log(logging.INFO+5, 'Completed task: %s', r['description'])
+
 def _push_properties(task: Dict[str, Any], initial: bool) -> None:
     entry = _parse_datetime(task['webdesk_created'])
     task['entry'] = entry
