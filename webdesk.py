@@ -20,17 +20,21 @@ _MAX_CONNECTIONS = 12
 # <http://unicode.org/repos/cldr/trunk/common/supplemental/windowsZones.xml>
 _TIMEZONE = 'GMT Standard Time'
 
+_URL_LOGON_CHANGETIMEZONE = 'wd/logon/changeTimeZone.rails'
+_URL_QUERY_LIST = 'wd/query/list.rails'
+_URL_OBJECT_OPEN = 'wd/object/open.rails'
+
 logger = logging.getLogger(__name__)
 
 def _ticket_pages(ses: Session, attributes: Dict[str, str]) -> Generator[BeautifulSoup, None, None]:
     # This reset's the user's preferred timezone.
-    r = ses.get(urljoin(attributes['url'], 'wd/logon/changeTimeZone.rails?' + urlencode([('key', _TIMEZONE)])))
+    r = ses.get(urljoin(attributes['url'], _URL_LOGON_CHANGETIMEZONE + '?' + urlencode([('key', _TIMEZONE)])))
     r.raise_for_status()
 
     last_page: Optional[int] = None
     for page in itertools.count(1):
         logger.debug('Fetching tickets, page %d/%s', page, last_page if last_page is not None else '?')
-        r = ses.get(urljoin(attributes['url'], 'wd/query/list.rails?class_name=IncidentManagement.Incident&query=_MyGroupIncidentWorkload&page_size=100&page={}'.format(page)))
+        r = ses.get(urljoin(attributes['url'], _URL_QUERY_LIST + '?class_name=IncidentManagement.Incident&query=_MyGroupIncidentWorkload&page_size=100&page={}'.format(page)))
         r.raise_for_status()
         soup = BeautifulSoup(r.text, 'html.parser')
         m = re.match('(\S+)\s+of\s+(\S+)', soup.find(id='list-pageNumber')['watermark'])
@@ -94,7 +98,7 @@ def get_tickets(attributes: Dict[str, str], only: Optional[Dict[str, Dict[str, A
                     tickets[t['list_params']['key']] = {
                         'url': urljoin(
                             attributes['url'],
-                            'wd/object/open.rails?'
+                            _URL_OBJECT_OPEN + '?'
                                 + urlencode([
                                     ('class_name', t['list_params']['launch_class_name']),
                                     ('key', t['list_params']['launch_key'])
