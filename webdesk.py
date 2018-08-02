@@ -8,9 +8,12 @@ from urllib.parse import urljoin, urlencode
 
 from bs4 import BeautifulSoup
 from requests import Session
+from requests.adapters import HTTPAdapter
 from requests_ntlm import HttpNtlmAuth
 
 import secret
+
+_MAX_CONNECTIONS = 12
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +81,9 @@ def get_tickets(attributes: Dict[str, str], only: Optional[Dict[str, Dict[str, A
     tickets: Dict[str, Any] = {}
 
     with Session() as ses:
+        ses.mount('http://', HTTPAdapter(pool_connections=1, pool_maxsize=_MAX_CONNECTIONS))
+        ses.mount('https://', HTTPAdapter(pool_connections=1, pool_maxsize=_MAX_CONNECTIONS))
+
         password = secret.get_password(attributes)
         ses.auth = HttpNtlmAuth(attributes['user'], password)
 
@@ -102,7 +108,7 @@ def get_tickets(attributes: Dict[str, str], only: Optional[Dict[str, Dict[str, A
                     'task': v,
                 }
 
-        with ThreadPoolExecutor(8) as ex:
+        with ThreadPoolExecutor(_MAX_CONNECTIONS) as ex:
             # map futures to ticket dicts
             f_to_ticket = {ex.submit(ses.get, t['url']): t for t in tickets.values()}
             try:
