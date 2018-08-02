@@ -52,7 +52,7 @@ def get_tasks(tw) -> Dict[str, Dict[str, Any]]:
 
 def add_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
     logger.debug('Adding task %s', task['webdesk_key'])
-    _push_properties(task, initial=True)
+    _push_properties(task)
     d = task['webdesk_details']
     d = d[0:100].strip() + ('…' if d[100:] else '')
     r = tw.task_add(d, **task)
@@ -60,7 +60,7 @@ def add_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
 
 def update_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
     logger.debug('Maybe updating task %s', task['webdesk_key'])
-    _push_properties(task, initial=False)
+    _push_properties(task)
     id_, twt = tw.get_task(webdesk_key=task['webdesk_key'])
     r = twt.update(task)
     if True in r.values():
@@ -71,7 +71,7 @@ def complete_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
     r = tw.task_done(webdesk_key=task['webdesk_key'])
     logger.log(logging.INFO+5, 'Completed task: %s', r['description'])
 
-def _push_properties(task: Dict[str, Any], initial: bool) -> None:
+def _push_properties(task: Dict[str, Any]) -> None:
     entry = _parse_datetime(task['webdesk_created'])
     task['entry'] = entry
 
