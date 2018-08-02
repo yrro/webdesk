@@ -28,13 +28,21 @@ logger = logging.getLogger(__name__)
 
 def _ticket_pages(ses: Session, attributes: Dict[str, str]) -> Generator[BeautifulSoup, None, None]:
     # This reset's the user's preferred timezone.
-    r = ses.get(urljoin(attributes['url'], _URL_LOGON_CHANGETIMEZONE + '?' + urlencode([('key', _TIMEZONE)])))
+    r = ses.get(urljoin(attributes['url'], _URL_LOGON_CHANGETIMEZONE), params={'key': _TIMEZONE})
     r.raise_for_status()
 
     last_page: Optional[int] = None
     for page in itertools.count(1):
         logger.debug('Fetching tickets, page %d/%s', page, last_page if last_page is not None else '?')
-        r = ses.get(urljoin(attributes['url'], _URL_QUERY_LIST + '?class_name=IncidentManagement.Incident&query=_MyGroupIncidentWorkload&page_size=100&page={}'.format(page)))
+        r = ses.get(
+            urljoin(attributes['url'], _URL_QUERY_LIST),
+            params={
+                'class_name': 'IncidentManagement.Incident',
+                'query': '_MyGroupIncidentWorkload',
+                'page_size': 100,
+                'page': page,
+            }
+        )
         r.raise_for_status()
         soup = BeautifulSoup(r.text, 'html.parser')
         m = re.match('(\S+)\s+of\s+(\S+)', soup.find(id='list-pageNumber')['watermark'])
