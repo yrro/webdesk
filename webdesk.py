@@ -15,15 +15,16 @@ import secret
 
 _MAX_CONNECTIONS = 12
 
+# "GMT Standard Time" is Microspeak for "Europe/London". If you actaully wanted
+# GMT then you shoudl have asked for "UTC", dummy!
+# <http://unicode.org/repos/cldr/trunk/common/supplemental/windowsZones.xml>
+_TIMEZONE = 'GMT Standard Time'
+
 logger = logging.getLogger(__name__)
 
 def ticket_pages(ses: Session, attributes: Dict[str, str]) -> Generator[BeautifulSoup, None, None]:
-    # Reset timezone so as to not be too annoying for the user. Yes, requesting
-    # "GMT Standard Time" gives you "Europe/London". If you actually wanted GMT
-    # then you should have asked for "UTC", dummy! Naturally this
-    # misunderstanding can be blamed on Microsoft.
-    # <http://unicode.org/repos/cldr/trunk/common/supplemental/windowsZones.xml>
-    r = ses.get(urljoin(attributes['url'], 'wd/logon/changeTimeZone.rails?key=GMT%20Standard%20Time'))
+    # This reset's the user's preferred timezone.
+    r = ses.get(urljoin(attributes['url'], 'wd/logon/changeTimeZone.rails?' + urlencode([('key', _TIMEZONE)])))
     r.raise_for_status()
 
     last_page: Optional[int] = None
