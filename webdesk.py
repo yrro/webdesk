@@ -124,14 +124,10 @@ def get_tickets(attributes: Dict[str, str], only: Optional[Dict[str, Dict[str, A
         with ThreadPoolExecutor(_MAX_CONNECTIONS) as ex:
             # map futures to ticket dicts
             f_to_ticket = {ex.submit(ses.get, t['url']): t for t in tickets.values()}
-            try:
-                for rf in as_completed(f_to_ticket):
-                    rf.result().raise_for_status()
-                    t = f_to_ticket[rf]
-                    t.update(_ticket_details_parse(rf.result().text))
-            except KeyboardInterrupt:
-                logger.info('KeyboardInterrupt - waiting for futures to complete...')
-                raise
+            for rf in as_completed(f_to_ticket):
+                rf.result().raise_for_status()
+                t = f_to_ticket[rf]
+                t.update(_ticket_details_parse(rf.result().text))
 
     for t in tickets.values():
         t['task'] = _ticket_task_build(t)
