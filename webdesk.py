@@ -3,7 +3,7 @@ import itertools
 import json
 import logging
 import re
-from typing import *
+from typing import Dict, Any, Generator, Optional
 from urllib.parse import urljoin, urlencode
 
 from bs4 import BeautifulSoup

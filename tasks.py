@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timedelta
 import re
-from typing import *
+from typing import Dict, Any
 
 import pytz
 from taskw import TaskWarrior
