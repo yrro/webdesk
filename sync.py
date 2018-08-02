@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 
 import webdesk
@@ -9,9 +10,13 @@ logger = logging.getLogger(__name__)
 def main(argv) -> int:
     logging.addLevelName(logging.INFO+5, 'NOTICE')
     logging.basicConfig()
-    logging.getLogger().setLevel(logging.INFO)
-    #logging.getLogger('requests.packages.urllib3').setLevel(logging.DEBUG)
-    #logging.getLogger('requests.packages.urllib3').propagate = True
+
+    log_level = os.environ.get('PYTHONLOGLEVEL', str(logging.INFO))
+    try:
+        log_level = int(log_level)
+    except ValueError:
+        pass
+    logging.getLogger().setLevel(log_level)
 
     attributes = {'user': argv[1], 'url': argv[2]}
     if not attributes['url'].endswith('/'):
