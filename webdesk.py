@@ -22,7 +22,7 @@ _TIMEZONE = 'GMT Standard Time'
 
 logger = logging.getLogger(__name__)
 
-def ticket_pages(ses: Session, attributes: Dict[str, str]) -> Generator[BeautifulSoup, None, None]:
+def _ticket_pages(ses: Session, attributes: Dict[str, str]) -> Generator[BeautifulSoup, None, None]:
     # This reset's the user's preferred timezone.
     r = ses.get(urljoin(attributes['url'], 'wd/logon/changeTimeZone.rails?' + urlencode([('key', _TIMEZONE)])))
     r.raise_for_status()
@@ -39,14 +39,14 @@ def ticket_pages(ses: Session, attributes: Dict[str, str]) -> Generator[Beautifu
         if page == last_page:
             break
 
-def tickets_from_page(page: BeautifulSoup) -> Generator[Dict[str, Any], None, None]:
+def _tickets_from_page(page: BeautifulSoup) -> Generator[Dict[str, Any], None, None]:
     for row in page.find(id='listBody').find_all('tr', 'listBodyRow'):
         yield {
             'list': row,
             'list_params': json.loads(row['params']),
         }
 
-def ticket_details_parse(body: str) -> Dict[str, Any]:
+def _ticket_details_parse(body: str) -> Dict[str, Any]:
     soup = BeautifulSoup(body, 'html.parser')
     return {
         'timezone': soup.find(id='timezoneBox').span.text,
@@ -54,7 +54,7 @@ def ticket_details_parse(body: str) -> Dict[str, Any]:
         'detail_params': json.loads(soup.find(id='original_values')['value']),
     }
 
-def ticket_task_build(ticket: Dict[str, Any]) -> Dict[str, Any]:
+def _ticket_task_build(ticket: Dict[str, Any]) -> Dict[str, Any]:
     d = ticket['detail_params']['Description49']
     d = BeautifulSoup(d, 'html.parser')
     d = re.sub(r'\s+', ' ', d.get_text(' '), flags=re.UNICODE)
@@ -89,8 +89,8 @@ def get_tickets(attributes: Dict[str, str], only: Optional[Dict[str, Dict[str, A
         ses.auth = HttpNtlmAuth(attributes['user'], password)
 
         if only is None:
-            for page in ticket_pages(ses, attributes):
-                for t in tickets_from_page(page):
+            for page in _ticket_pages(ses, attributes):
+                for t in _tickets_from_page(page):
                     tickets[t['list_params']['key']] = {
                         'url': urljoin(
                             attributes['url'],
@@ -116,12 +116,12 @@ def get_tickets(attributes: Dict[str, str], only: Optional[Dict[str, Dict[str, A
                 for rf in as_completed(f_to_ticket):
                     rf.result().raise_for_status()
                     t = f_to_ticket[rf]
-                    t.update(ticket_details_parse(rf.result().text))
+                    t.update(_ticket_details_parse(rf.result().text))
             except KeyboardInterrupt:
                 logger.info('KeyboardInterrupt - waiting for futures to complete...')
                 raise
 
     for t in tickets.values():
-        t['task'] = ticket_task_build(t)
+        t['task'] = _ticket_task_build(t)
 
     return tickets
