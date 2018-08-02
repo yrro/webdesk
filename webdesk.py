@@ -107,10 +107,10 @@ def get_tickets(attributes: Dict[str, str], only: Optional[Dict[str, Dict[str, A
                         'url': urljoin(
                             attributes['url'],
                             _URL_OBJECT_OPEN + '?'
-                                + urlencode([
-                                    ('class_name', t['list_params']['launch_class_name']),
-                                    ('key', t['list_params']['launch_key'])
-                                ])
+                            + urlencode([
+                                ('class_name', t['list_params']['launch_class_name']),
+                                ('key', t['list_params']['launch_key'])
+                            ])
                         ),
                         **t,
                     }
