@@ -7,6 +7,12 @@ import tasks
 
 logger = logging.getLogger(__name__)
 
+_COMPLETED_STATUSES = {
+    'Closed',
+    'Resolved',
+    'Resolved With No Contact',
+}
+
 def main(argv) -> int:
     logging.addLevelName(logging.INFO+5, 'NOTICE')
     logging.basicConfig()
@@ -45,9 +51,11 @@ def main(argv) -> int:
     missing_tickets = webdesk.get_tickets(attributes, {k: v for k, v in tasks_.items() if k in missing_tasks})
     for k, v in missing_tickets.items():
         tasks.update_task(tw, v['task'])
-        tasks.complete_task(tw, v['task'])
+        if v['task']['webdesk_status'] in _COMPLETED_STATUSES:
+            tasks.complete_task(tw, v['task'])
 
     return 0
+
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
