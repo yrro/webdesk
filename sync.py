@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import logging
 import os
 import sys
@@ -6,12 +7,6 @@ import webdesk
 import tasks
 
 logger = logging.getLogger(__name__)
-
-_COMPLETED_STATUSES = {
-    'Closed',
-    'Resolved',
-    'Resolved With No Contact',
-}
 
 def main(argv) -> int:
     logging.addLevelName(logging.INFO+5, 'NOTICE')
@@ -50,8 +45,16 @@ def main(argv) -> int:
         logger.info('Fetching missing tickets from WebDesk...')
     missing_tickets = webdesk.get_tickets(attributes, {k: v for k, v in tasks_.items() if k in missing_tasks})
     for k, v in missing_tickets.items():
+        if v['task']['webdesk_status'] in {'With Customer', 'With 3rd Party', 'Resolved', 'Resolved With No Contact'}:
+            # Hide the task
+            if 'wait' not in v['task']:
+                v['task']['wait'] = datetime.now() + timedelta(year=1)
+        else:
+            v['task']['wait'] = None
+
         tasks.update_task(tw, v['task'])
-        if v['task']['webdesk_status'] in _COMPLETED_STATUSES:
+
+        if v['task']['webdesk_status'] == 'Closed':
             tasks.complete_task(tw, v['task'])
 
     return 0
