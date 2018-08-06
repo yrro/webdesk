@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 import logging
 import os
 import sys
@@ -39,19 +38,14 @@ def main(argv) -> int:
         tasks.add_task(tw, tickets[k]['task'])
 
     for k in existing_tasks:
+        tickets[k]['task']['webdesk_unhide'] = 1
         tasks.update_task(tw, tickets[k]['task'])
 
     if missing_tasks:
         logger.info('Fetching missing tickets from WebDesk...')
     missing_tickets = webdesk.get_tickets(attributes, {k: v for k, v in tasks_.items() if k in missing_tasks})
     for k, v in missing_tickets.items():
-        if v['task']['webdesk_status'] in {'With Customer', 'With 3rd Party', 'Resolved', 'Resolved With No Contact'}:
-            # Hide the task
-            if 'wait' not in v['task']:
-                v['task']['wait'] = datetime.now() + timedelta(year=1)
-        else:
-            v['task']['wait'] = None
-
+        v['task']['webdesk_hidden'] = 1
         tasks.update_task(tw, v['task'])
 
         if v['task']['webdesk_status'] == 'Closed':

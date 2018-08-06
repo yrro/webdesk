@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timedelta
 import re
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 import pytz
 from taskw import TaskWarrior
@@ -28,6 +28,8 @@ _UDA = {
     'webdesk_details': {'label': 'WebDesk details', 'type': 'string'},
     'webdesk_response': {'label': 'WebDesk resolution level', 'type': 'string'},
     'webdesk_status': {'label': 'WebDesk status', 'type': 'string'},
+    'webdesk_hidden': {'label': 'Missing from WebDesk incident list', 'type': 'numeric'},
+    'webdesk_unhide': {'label': 'Implementation detal, please ignore', 'type': 'numeric'},
 }
 
 def _parse_datetime(d: str) -> datetime:
@@ -60,8 +62,8 @@ def add_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
 
 def update_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
     logger.debug('Maybe updating task %s', task['webdesk_key'])
-    _push_properties(task)
     id_, twt = tw.get_task(webdesk_key=task['webdesk_key'])
+    _push_properties(task, twt)
     r = twt.update(task)
     if True in r.values():
         tw.task_update(twt)
@@ -71,7 +73,7 @@ def complete_task(tw: TaskWarrior, task: Dict[str, Any]) -> None:
     r = tw.task_done(webdesk_key=task['webdesk_key'])
     logger.log(logging.INFO+5, 'Completed task: %s', r['description'])
 
-def _push_properties(task: Dict[str, Any]) -> None:
+def _push_properties(task: Dict[str, Any], twt: Optional[Dict[str, Any]] = None) -> None:
     entry = _parse_datetime(task['webdesk_created'])
     task['entry'] = entry
 
@@ -86,3 +88,13 @@ def _push_properties(task: Dict[str, Any]) -> None:
             if due.weekday() < 5:
                 d -= 1
     task['due'] = due
+
+    if task.get('webdesk_unhide'):
+        task['webdesk_unhide'] = None
+        if task.get('webdesk_hidden'):
+            logger.debug('Unhiding task %s', task['webdesk_key'])
+            task['webdesk_hidden'] = None
+            task['wait'] = None
+    elif task.get('webdesk_hidden') and 'wait' not in twt:
+        logger.debug('Hiding task %s', task['webdesk_key'])
+        task['wait'] = datetime.now() + timedelta(days = 3650)
