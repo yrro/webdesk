@@ -16,7 +16,7 @@ def main(argv) -> int:
         log_level = int(log_level)
     except ValueError:
         pass
-    logging.getLogger().setLevel(log_level)
+    logging.root.setLevel(log_level)
 
     attributes = {'user': argv[1], 'url': argv[2]}
     if not attributes['url'].endswith('/'):
